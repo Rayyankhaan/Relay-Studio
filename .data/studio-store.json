@@ -1,0 +1,258 @@
+{
+  "shorts": [
+    {
+      "id": "sh_101",
+      "title": "Why 401(k) Match Beats Crypto Speculation at 24",
+      "niche": "US Personal Finance",
+      "campaignId": "camp_whop_fintech",
+      "hook": "Stop skipping your employer 401(k) match—it is literally an instant 100% return.",
+      "scriptBody": "Most 24-year-olds in the US leave $3,200 a year untouched because it feels locked up. Put 5% in first, take the free match, and let S&P compounding run.",
+      "payoff": "Check your HR portal tonight before next Friday’s payroll cutoff.",
+      "captionLines": [
+        "Stop skipping free money",
+        "Instant 100% employer match",
+        "$3,200 left on table",
+        "S&P 500 compounding math",
+        "Check payroll before Friday"
+      ],
+      "seoTitle": "The $3,200 Payroll Mistake Most 24-Year-Olds Make",
+      "seoDescription": "How US employer 401(k) matching outperforms risky trades early on. #FinPulsePartner #Shorts",
+      "pinnedComment": "Does your job offer a 4% or 6% match?",
+      "hashtags": [
+        "PersonalFinance",
+        "USFinance",
+        "401k",
+        "Shorts"
+      ],
+      "audioId": "aud_us_1",
+      "audioTitle": "Midnight Ledger (Sped Up)",
+      "audioArtist": "Kairo Beats",
+      "audioBpm": 126,
+      "backdropKey": "finance",
+      "targetTimezone": "America/New_York",
+      "scheduledAt": "2026-11-15T20:15:51.254Z",
+      "status": "scheduled",
+      "youtubeShortUrl": "",
+      "estimatedDurationSec": 27,
+      "voiceName": "Kore",
+      "hasVoiceover": false,
+      "complianceCheck": {
+        "usEnglish": true,
+        "durationUnder60": true,
+        "requiredTagPresent": true,
+        "vertical9x16": true
+      },
+      "views": 0,
+      "createdAt": "2026-11-15T13:15:51.254Z"
+    },
+    {
+      "id": "sh_102",
+      "title": "3-Tab AI Workflow Replacing $200/mo SaaS Tools",
+      "niche": "AI & SaaS Tools",
+      "campaignId": "camp_saas_founder",
+      "hook": "You are paying $200 a month for software that three free browser steps replace.",
+      "scriptBody": "First, pipe meeting transcripts straight into a structured prompt template. Second, auto-format weekly sprint summaries for your US team in 12 seconds.",
+      "payoff": "Try this workflow on your Monday standup and compare the time saved.",
+      "captionLines": [
+        "Stop paying $200/mo",
+        "3-step AI browser flow",
+        "Pipe transcripts automatically",
+        "12-second sprint summary",
+        "Test on Monday standup"
+      ],
+      "seoTitle": "The 12-Second AI Workflow Replacing $200/mo Tools",
+      "seoDescription": "Cut bloated SaaS subscriptions with a lean three-step workflow. #StackFlowClip #Shorts",
+      "pinnedComment": "Which monthly tool are you canceling first?",
+      "hashtags": [
+        "AITools",
+        "Productivity",
+        "TechShorts",
+        "Shorts"
+      ],
+      "audioId": "aud_us_2",
+      "audioTitle": "Subway Echoes (Lo-Fi Trap)",
+      "audioArtist": "Nolan West",
+      "audioBpm": 118,
+      "backdropKey": "tech",
+      "targetTimezone": "America/New_York",
+      "scheduledAt": "2026-11-15T15:15:51.254Z",
+      "status": "submitted",
+      "youtubeShortUrl": "https://youtube.com/shorts/rX9kLm2Pq8A",
+      "estimatedDurationSec": 29,
+      "voiceName": "Puck",
+      "hasVoiceover": false,
+      "complianceCheck": {
+        "usEnglish": true,
+        "durationUnder60": true,
+        "requiredTagPresent": true,
+        "vertical9x16": true
+      },
+      "submissionReceipt": {
+        "submittedAt": "2026-11-15T15:27:51.254Z",
+        "targetPlatform": "Content Rewards Portal",
+        "campaignName": "StackFlow AI Creator Clips",
+        "statusCode": 200,
+        "method": "bridge_sync",
+        "responseNote": "Short URL copied, validated (#StackFlowClip), and registered in payout ledger.",
+        "copiedLink": "https://youtube.com/shorts/rX9kLm2Pq8A"
+      },
+      "views": 18420,
+      "createdAt": "2026-11-15T08:15:51.254Z"
+    },
+    {
+      "id": "sh_103",
+      "title": "Why 5:30 PM EST Outperforms Morning Uploads in the US",
+      "niche": "US Entrepreneurship",
+      "campaignId": "camp_mindset_pod",
+      "hook": "If you upload YouTube Shorts at 8 AM, half of the US is still asleep on the West Coast.",
+      "scriptBody": "Eastern commute hits at 5:30 PM while Central and Pacific creators are active on lunch breaks. That cross-timezone overlap spikes first-hour swipe-to-stay velocity.",
+      "payoff": "Shift your next three Shorts to 5:30 PM EST and watch hour-one retention.",
+      "captionLines": [
+        "Stop posting at 8 AM",
+        "West Coast is asleep",
+        "5:30 PM EST sweet spot",
+        "Cross-coast US overlap",
+        "Watch hour-one retention"
+      ],
+      "seoTitle": "The Exact US Time Slot That Doubles Shorts Velocity",
+      "seoDescription": "Syncing YouTube Shorts to US East-to-West overlap windows. #FounderClip #Shorts",
+      "pinnedComment": "What timezone do most of your viewers watch from?",
+      "hashtags": [
+        "YouTubeShorts",
+        "CreatorTips",
+        "USTraffic",
+        "Shorts"
+      ],
+      "audioId": "aud_us_3",
+      "audioTitle": "Pacific Dawn (Ambient Drive)",
+      "audioArtist": "Sierra Tape",
+      "audioBpm": 108,
+      "backdropKey": "mindset",
+      "targetTimezone": "America/Los_Angeles",
+      "scheduledAt": "2026-11-16T00:15:51.254Z",
+      "status": "scheduled",
+      "youtubeShortUrl": "",
+      "estimatedDurationSec": 26,
+      "voiceName": "Charon",
+      "hasVoiceover": false,
+      "complianceCheck": {
+        "usEnglish": true,
+        "durationUnder60": true,
+        "requiredTagPresent": true,
+        "vertical9x16": true
+      },
+      "views": 0,
+      "createdAt": "2026-11-15T16:15:51.254Z"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "camp_whop_fintech",
+      "name": "FinPulse US Clipping Bounty",
+      "platform": "Whop Content Rewards",
+      "rpmUsd": 2.4,
+      "minViews": 1000,
+      "requiredTag": "#FinPulsePartner",
+      "webhookUrl": "",
+      "portalSubmitUrl": "https://whop.com/content-rewards",
+      "active": true,
+      "totalSubmitted": 14,
+      "estimatedEarningsUsd": 412.8
+    },
+    {
+      "id": "camp_saas_founder",
+      "name": "StackFlow AI Creator Clips",
+      "platform": "Content Rewards Portal",
+      "rpmUsd": 1.85,
+      "minViews": 2500,
+      "requiredTag": "#StackFlowClip",
+      "webhookUrl": "",
+      "portalSubmitUrl": "https://whop.com/content-rewards",
+      "active": true,
+      "totalSubmitted": 9,
+      "estimatedEarningsUsd": 229.4
+    },
+    {
+      "id": "camp_mindset_pod",
+      "name": "West Coast Founder Clips",
+      "platform": "Creator Bounty Network",
+      "rpmUsd": 1.5,
+      "minViews": 1500,
+      "requiredTag": "#FounderClip",
+      "webhookUrl": "",
+      "portalSubmitUrl": "https://whop.com/content-rewards",
+      "active": true,
+      "totalSubmitted": 6,
+      "estimatedEarningsUsd": 138
+    }
+  ],
+  "audios": [
+    {
+      "id": "aud_us_1",
+      "title": "Midnight Ledger (Sped Up)",
+      "artist": "Kairo Beats",
+      "bpm": 126,
+      "mood": "Urgent Finance / Crisp Pulse",
+      "velocityLabel": "US Top 15 Finance",
+      "usRegionShare": 86,
+      "niche": "US Personal Finance",
+      "hookCue": "Hard beat drop at 0:02.2 right after opening number"
+    },
+    {
+      "id": "aud_us_2",
+      "title": "Subway Echoes (Lo-Fi Trap)",
+      "artist": "Nolan West",
+      "bpm": 118,
+      "mood": "Clean Storytelling / Tech",
+      "velocityLabel": "Rising +112% US",
+      "usRegionShare": 81,
+      "niche": "AI & SaaS Tools",
+      "hookCue": "Cut b-roll every 2.0s on snare transient"
+    },
+    {
+      "id": "aud_us_3",
+      "title": "Pacific Dawn (Ambient Drive)",
+      "artist": "Sierra Tape",
+      "bpm": 108,
+      "mood": "Documentary / Motivational",
+      "velocityLabel": "High Retention Loop",
+      "usRegionShare": 79,
+      "niche": "US Entrepreneurship",
+      "hookCue": "Warm swell at 0:01.5 into steady bassline"
+    }
+  ],
+  "cadence": {
+    "autoRunEnabled": false,
+    "postsPerDay": 3,
+    "usWindowsEst": [
+      "12:15",
+      "17:30",
+      "20:45"
+    ],
+    "defaultNiche": "US Personal Finance",
+    "defaultCampaignId": "camp_whop_fintech",
+    "autoSubmitOnPublish": true,
+    "defaultTimezone": "America/New_York",
+    "youtubeChannelHandle": "@usdailyclips"
+  },
+  "events": [
+    {
+      "id": "evt_1",
+      "timestamp": "2026-11-15T15:27:51.254Z",
+      "shortId": "sh_102",
+      "shortTitle": "3-Tab AI Workflow Replacing $200/mo SaaS Tools",
+      "stage": "Content Rewards Submit",
+      "detail": "Copied https://youtube.com/shorts/rX9kLm2Pq8A and logged StackFlow AI Creator Clips submission.",
+      "outcome": "success"
+    },
+    {
+      "id": "evt_2",
+      "timestamp": "2026-11-15T15:15:51.254Z",
+      "shortId": "sh_102",
+      "shortTitle": "3-Tab AI Workflow Replacing $200/mo SaaS Tools",
+      "stage": "YouTube Shorts Publish",
+      "detail": "Published 9:16 package with Subway Echoes (118 BPM) in US English.",
+      "outcome": "success"
+    }
+  ]
+}

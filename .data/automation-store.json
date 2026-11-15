@@ -1,0 +1,46 @@
+{
+  "clips": [],
+  "campaigns": [
+    {
+      "id": "camp_whop_rewards",
+      "name": "Whop Content Rewards",
+      "platform": "Whop",
+      "rpmUsd": 2,
+      "requiredTag": "#whop",
+      "webhookUrl": "",
+      "portalSubmitUrl": "https://whop.com/content-rewards",
+      "totalSubmitted": 0,
+      "estimatedEarningsUsd": 0
+    },
+    {
+      "id": "camp_clip_bounty",
+      "name": "Tier-1 Clipping Bounty",
+      "platform": "Content Rewards Portal",
+      "rpmUsd": 1.75,
+      "requiredTag": "#clip",
+      "webhookUrl": "",
+      "portalSubmitUrl": "https://whop.com/content-rewards",
+      "totalSubmitted": 0,
+      "estimatedEarningsUsd": 0
+    }
+  ],
+  "config": {
+    "watchFolderPath": "./shorts-inbox",
+    "autoRunEnabled": false,
+    "postsPerDay": 3,
+    "peakWindowsEst": [
+      "08:30",
+      "17:30",
+      "20:30"
+    ],
+    "targetRegions": [
+      "US",
+      "CA",
+      "AU"
+    ],
+    "defaultCampaignId": "camp_whop_rewards",
+    "youtubeUploadWebhookUrl": "",
+    "autoSubmitToRewards": true
+  },
+  "events": []
+}

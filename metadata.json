@@ -1,0 +1,6 @@
+{
+  "name": "Relay Studio",
+  "description": "Automated YouTube Shorts scheduling, US-targeted AI content studio, trending audio discovery, and Content Rewards submission pipeline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
