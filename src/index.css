@@ -9,8 +9,9 @@
 @layer base {
   html {
     font-family: var(--font-sans);
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #090d16;
+    color: #f1f5f9;
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
   }
 

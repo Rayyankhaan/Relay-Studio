@@ -1,18 +1,35 @@
-import { useCallback, useEffect, useState } from 'react';
 import {
-  CalendarClock,
-  FolderInput,
+  BarChart3,
+  Calendar,
+  Film,
   LayoutDashboard,
+  ListOrdered,
+  Lock,
   Menu,
+  Music2,
   Send,
-  Upload,
+  Settings,
+  UploadCloud,
   X,
+  Youtube,
 } from 'lucide-react';
-import { DailyDashboardView } from './components/DailyDashboardView.tsx';
-import { FolderPipelineView } from './components/FolderPipelineView.tsx';
-import { RewardsSubmitView } from './components/RewardsSubmitView.tsx';
-import { Tier1ScheduleView } from './components/Tier1ScheduleView.tsx';
-import { STUDIO_ASSETS } from './constants/assets.ts';
+import { useCallback, useEffect, useState } from 'react';
+import { AnalyticsView } from './components/AnalyticsView.tsx';
+import { CalendarView } from './components/CalendarView.tsx';
+import {
+  SettingsView,
+  YouTubeChannelView,
+} from './components/ChannelAndSettingsView.tsx';
+import { OverviewView } from './components/OverviewView.tsx';
+import { PublishingQueueView } from './components/PublishingQueueView.tsx';
+import { TrendingAudioView } from './components/TrendingAudioView.tsx';
+import { UploadShortsView } from './components/UploadShortsView.tsx';
+import { VideoLibraryView } from './components/VideoLibraryView.tsx';
+import {
+  getLocalVideoBlob,
+  safeFetchJson,
+  uploadBlobDirectlyToYouTube,
+} from './lib/clipStorage.ts';
 import {
   connectYoutubeWithGoogle,
   disconnectYoutube,
@@ -20,414 +37,491 @@ import {
   initYoutubeAuth,
 } from './lib/youtubeAuth.ts';
 import type {
-  AutomationConfig,
-  AutomationState,
-  Campaign,
-  ClipItem,
-  YouTubeChannelInfo,
-  YouTubeRemoteVideo,
-  YoutubePrivacy,
+  AnalyticsReport,
+  DashboardSnapshot,
+  SchedulerSettings,
+  VideoRecord,
 } from './types.ts';
 
-type NavTab = 'dashboard' | 'folder' | 'schedule' | 'rewards';
+type NavId =
+  | 'overview'
+  | 'upload'
+  | 'library'
+  | 'queue'
+  | 'calendar'
+  | 'audio'
+  | 'analytics'
+  | 'channel'
+  | 'settings';
 
-const NAV_ITEMS: Array<{
-  id: NavTab;
-  label: string;
-  breadcrumb: string;
-  icon: typeof LayoutDashboard;
-}> = [
-  {
-    id: 'dashboard',
-    label: 'Daily 5-Upload Dashboard',
-    breadcrumb: 'Daily 5-Upload Dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    id: 'folder',
-    label: 'Watch Folder & Clips',
-    breadcrumb: 'Watch Folder Automation',
-    icon: FolderInput,
-  },
-  {
-    id: 'schedule',
-    label: 'US / CA / AU Schedule',
-    breadcrumb: 'US, Canada & Australia Schedule',
-    icon: CalendarClock,
-  },
-  {
-    id: 'rewards',
-    label: 'Content Rewards Submit',
-    breadcrumb: 'Content Rewards Submission',
-    icon: Send,
-  },
+const NAV_ITEMS: Array<{ id: NavId; label: string; icon: typeof LayoutDashboard }> = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'upload', label: 'Upload Shorts', icon: UploadCloud },
+  { id: 'library', label: 'Video Library', icon: Film },
+  { id: 'queue', label: 'Publishing Queue', icon: ListOrdered },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
+  { id: 'audio', label: 'Trending Audio', icon: Music2 },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'channel', label: 'YouTube Channel', icon: Youtube },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export default function App() {
-  const [state, setState] = useState<AutomationState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [noticeBanner, setNoticeBanner] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<NavId>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [avatarFailed, setAvatarFailed] = useState(false);
 
-  // YouTube OAuth + Channel state
-  const [ytConnected, setYtConnected] = useState(false);
-  const [ytConnecting, setYtConnecting] = useState(false);
-  const [ytChannel, setYtChannel] = useState<YouTubeChannelInfo | null>(null);
-  const [ytVideos, setYtVideos] = useState<YouTubeRemoteVideo[]>([]);
-  const [ytLoadingVideos, setYtLoadingVideos] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Confirmation modal state for live YouTube upload
-  const [pendingUploadConfirm, setPendingUploadConfirm] = useState<{
-    clip: ClipItem;
-    youtubeUrl?: string;
-    privacyStatus: YoutubePrivacy;
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    getYoutubeAccessToken()
+  );
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [analyticsReport, setAnalyticsReport] = useState<AnalyticsReport | null>(null);
+
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [busyVideoId, setBusyVideoId] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{
+    message: string;
+    level: 'success' | 'error' | 'info';
   } | null>(null);
 
-  const [uploading, setUploading] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [busyClipId, setBusyClipId] = useState<string | null>(null);
-  const [savingConfig, setSavingConfig] = useState(false);
-  const [ticking, setTicking] = useState(false);
+  // Explicit YouTube upload confirmation modal state
+  const [confirmPublishVideo, setConfirmPublishVideo] = useState<VideoRecord | null>(null);
+  const [confirmUseSchedule, setConfirmUseSchedule] = useState(true);
 
-  const notify = (msg: string) => {
-    setNoticeBanner(msg);
-    window.setTimeout(() => setNoticeBanner((curr) => (curr === msg ? null : curr)), 5000);
-  };
+  const notify = useCallback(
+    (message: string, level: 'success' | 'error' | 'info' = 'info') => {
+      setBanner({ message, level });
+    },
+    []
+  );
 
-  const fetchState = useCallback(async () => {
+  const authHeaders = useCallback((): HeadersInit => {
+    const token = accessToken || getYoutubeAccessToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [accessToken]);
+
+  const loadSnapshot = useCallback(async () => {
+    const data = await safeFetchJson<DashboardSnapshot>('/api/snapshot', {
+      headers: authHeaders(),
+    });
+    setSnapshot(data);
+  }, [authHeaders]);
+
+  const checkSessionAndBoot = useCallback(async () => {
     try {
-      const res = await fetch('/api/state');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load automation state');
-      setState(data as AutomationState);
-      setErrorBanner(null);
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Unable to connect to server');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadYoutubeData = useCallback(async (token: string) => {
-    setYtLoadingVideos(true);
-    try {
-      const [chRes, vidRes] = await Promise.all([
-        fetch('/api/youtube/channel', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/youtube/videos', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-      const chJson = await chRes.json();
-      if (!chRes.ok) throw new Error(chJson.error || 'Failed to load YouTube channel');
-      setYtChannel(chJson.channel as YouTubeChannelInfo);
-
-      const vidJson = await vidRes.json();
-      if (vidRes.ok && Array.isArray(vidJson.videos)) {
-        setYtVideos(vidJson.videos as YouTubeRemoteVideo[]);
+      const session = await safeFetchJson<{
+        authRequired: boolean;
+        authenticated: boolean;
+      }>('/api/auth/session');
+      setAuthRequired(session.authRequired);
+      setAuthenticated(session.authenticated);
+      setAuthChecked(true);
+      if (session.authenticated) {
+        await loadSnapshot();
       }
-      setYtConnected(true);
     } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'YouTube channel sync failed');
-    } finally {
-      setYtLoadingVideos(false);
+      setAuthChecked(true);
+      notify(err instanceof Error ? err.message : 'Failed to reach server.', 'error');
     }
-  }, []);
+  }, [loadSnapshot, notify]);
 
   useEffect(() => {
-    fetchState();
-  }, [fetchState]);
-
-  useEffect(() => {
+    checkSessionAndBoot();
     const unsub = initYoutubeAuth(
       (_user, token) => {
-        setYtConnected(true);
-        loadYoutubeData(token);
+        setAccessToken(token);
       },
       () => {
-        setYtConnected(false);
-        setYtChannel(null);
-        setYtVideos([]);
+        setAccessToken(null);
       }
     );
     return () => unsub();
-  }, [loadYoutubeData]);
+  }, [checkSessionAndBoot]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      fetchState();
-    }, 15000);
-    return () => window.clearInterval(timer);
-  }, [fetchState]);
-
-  const handleConnectYoutube = async () => {
-    setYtConnecting(true);
-    setErrorBanner(null);
-    try {
-      const { accessToken } = await connectYoutubeWithGoogle();
-      await loadYoutubeData(accessToken);
-      notify('Connected YouTube channel.');
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Google YouTube sign-in failed');
-    } finally {
-      setYtConnecting(false);
+    if (authenticated) {
+      loadSnapshot().catch(() => {});
     }
-  };
+  }, [accessToken, authenticated, loadSnapshot]);
 
-  const handleDisconnectYoutube = async () => {
-    await disconnectYoutube();
-    setYtConnected(false);
-    setYtChannel(null);
-    setYtVideos([]);
-    notify('Disconnected YouTube account.');
-  };
+  // Poll server snapshot every 20 seconds when authenticated
+  useEffect(() => {
+    if (!authenticated) return;
+    const timer = setInterval(() => {
+      loadSnapshot().catch(() => {});
+    }, 20000);
+    return () => clearInterval(timer);
+  }, [authenticated, loadSnapshot]);
 
-  const handleRefreshYoutube = async () => {
-    const token = getYoutubeAccessToken();
-    if (!token) {
-      setErrorBanner('YouTube session expired. Please sign in with Google again.');
-      return;
-    }
-    await loadYoutubeData(token);
-    notify('Synced latest YouTube channel uploads.');
-  };
-
-  const handleUploadClips = async (files: FileList | File[]) => {
-    setUploading(true);
-    setErrorBanner(null);
+  const handleDashboardLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
     try {
-      const form = new FormData();
-      Array.from(files).forEach((f) => form.append('clips', f));
-      const res = await fetch('/api/clips/upload', {
+      await safeFetchJson('/api/auth/login', {
         method: 'POST',
-        body: form,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Clip upload failed');
-      setState(data.state);
+      setAuthenticated(true);
+      setPasswordInput('');
+      await loadSnapshot();
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Login failed.');
+    }
+  };
+
+  const handleConnectYouTube = async () => {
+    setBusyAction('connect-youtube');
+    try {
+      const res = await connectYoutubeWithGoogle();
+      setAccessToken(res.accessToken);
+      await loadSnapshot();
+      notify('YouTube channel connected via Google OAuth.', 'success');
+    } catch (err) {
       notify(
-        `Added ${data.addedCount || Array.from(files).length} clip(s) to ${data.state.config.watchFolderPath} and parsed filename titles.`
+        err instanceof Error ? err.message : 'Google OAuth sign-in failed.',
+        'error'
+      );
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleDisconnectYouTube = async () => {
+    setBusyAction('disconnect-youtube');
+    try {
+      await disconnectYoutube();
+      await safeFetchJson('/api/youtube/disconnect', { method: 'POST' });
+      setAccessToken(null);
+      await loadSnapshot();
+      notify('Disconnected YouTube channel.', 'info');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Disconnect failed.', 'error');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleSyncStats = async () => {
+    setBusyAction('sync-stats');
+    try {
+      const res = await safeFetchJson<{ updatedCount: number }>(
+        '/api/youtube/sync-stats',
+        { method: 'POST', headers: authHeaders() }
+      );
+      await loadSnapshot();
+      notify(`Synced real YouTube metrics for ${res.updatedCount} Short(s).`, 'success');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Stats sync failed.', 'error');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleLoadAnalytics = async () => {
+    setBusyAction('load-analytics');
+    try {
+      const report = await safeFetchJson<AnalyticsReport>('/api/youtube/analytics', {
+        headers: authHeaders(),
+      });
+      setAnalyticsReport(report);
+      if (report.available) {
+        notify('Loaded live YouTube Analytics API report.', 'success');
+      } else {
+        notify(report.reason || 'Analytics API scope not authorized.', 'info');
+      }
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Failed to load analytics.', 'error');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleToggleScheduler = async (pause: boolean) => {
+    setBusyAction('toggle-scheduler');
+    try {
+      await safeFetchJson(pause ? '/api/scheduler/pause' : '/api/scheduler/resume', {
+        method: 'POST',
+      });
+      await loadSnapshot();
+      notify(pause ? 'Publishing scheduler paused.' : 'Publishing scheduler resumed.', 'info');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Scheduler toggle failed.', 'error');
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleAnalyzeVideo = async (videoId: string) => {
+    setBusyVideoId(videoId);
+    try {
+      await safeFetchJson(`/api/videos/${videoId}/analyze`, { method: 'POST' });
+      await loadSnapshot();
+      notify('AI meme safety & audio mood check complete.', 'success');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'AI analysis failed.', 'error');
+    } finally {
+      setBusyVideoId(null);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    setBusyVideoId(videoId);
+    try {
+      await safeFetchJson(`/api/videos/${videoId}`, { method: 'DELETE' });
+      await loadSnapshot();
+      notify('Removed unpublished video from queue.', 'info');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Delete failed.', 'error');
+    } finally {
+      setBusyVideoId(null);
+    }
+  };
+
+  const handleReschedule = async (videoId: string, scheduledAtIso: string) => {
+    setBusyVideoId(videoId);
+    try {
+      await safeFetchJson(`/api/videos/${videoId}/reschedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt: scheduledAtIso }),
+      });
+      await loadSnapshot();
+      notify('Updated scheduled slot.', 'success');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Reschedule failed.', 'error');
+    } finally {
+      setBusyVideoId(null);
+    }
+  };
+
+  const handleRetryVideo = async (videoId: string) => {
+    setBusyVideoId(videoId);
+    try {
+      await safeFetchJson(`/api/videos/${videoId}/retry`, { method: 'POST' });
+      await loadSnapshot();
+      notify('Video moved back into scheduled queue.', 'info');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Retry failed.', 'error');
+    } finally {
+      setBusyVideoId(null);
+    }
+  };
+
+  const handleRunTick = async () => {
+    setBusyAction('tick');
+    try {
+      const res = await safeFetchJson<{
+        scanned: number;
+        attempted: number;
+        published: number;
+      }>('/api/scheduler/tick', { method: 'POST' });
+      await loadSnapshot();
+      notify(
+        `Tick finished: ${res.scanned} imported, ${res.published}/${res.attempted} published.`,
+        'info'
       );
     } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to upload clips');
+      notify(err instanceof Error ? err.message : 'Tick failed.', 'error');
     } finally {
-      setUploading(false);
+      setBusyAction(null);
     }
   };
 
-  const handleScanFolder = async () => {
-    setScanning(true);
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/folder/scan', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Folder scan failed');
-      setState(data.state);
-      notify(
-        data.addedCount > 0
-          ? `Detected ${data.addedCount} new clip(s) in watch folder.`
-          : 'Watch folder is up to date.'
-      );
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to scan folder');
-    } finally {
-      setScanning(false);
-    }
-  };
+  const executeConfirmedPublish = async () => {
+    if (!confirmPublishVideo || !snapshot) return;
+    const video = confirmPublishVideo;
+    const useSchedule = confirmUseSchedule;
+    setConfirmPublishVideo(null);
+    setBusyVideoId(video.id);
 
-  const handleUpdateClip = async (id: string, patch: Partial<ClipItem>) => {
     try {
-      const res = await fetch(`/api/clips/${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Update failed');
-      setState(data.state);
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to update clip');
-    }
-  };
-
-  const handleDeleteClip = async (id: string) => {
-    try {
-      const res = await fetch(`/api/clips/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Delete failed');
-      setState(data.state);
-      notify('Removed clip from watch folder and queue.');
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to delete clip');
-    }
-  };
-
-  const executeRunClip = async (
-    id: string,
-    youtubeUrl?: string,
-    privacyStatus?: YoutubePrivacy
-  ) => {
-    setBusyClipId(id);
-    setErrorBanner(null);
-    try {
-      const token = getYoutubeAccessToken();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+      // If stored in browser IndexedDB (Vercel large-file fallback), upload directly from browser
+      if (!video.hasLocalFile) {
+        const token = accessToken || getYoutubeAccessToken();
+        if (!token) {
+          throw new Error('Connect your YouTube channel before publishing.');
+        }
+        const blob = await getLocalVideoBlob(video.id);
+        if (!blob) {
+          throw new Error('Browser-cached video blob not found. Re-upload the video.');
+        }
+        try {
+          const uploaded = await uploadBlobDirectlyToYouTube({
+            accessToken: token,
+            blob,
+            privacyStatus:
+              snapshot.settings.youtubePrivacyMode === 'scheduled_private'
+                ? 'private'
+                : snapshot.settings.youtubePrivacyMode,
+            publishAtIso: useSchedule ? video.scheduledAt : null,
+          });
+          await safeFetchJson(`/api/videos/${video.id}/direct-result`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              youtubeVideoId: uploaded.youtubeVideoId,
+              youtubeUrl: uploaded.youtubeUrl,
+              privacyStatus: uploaded.privacyApplied,
+            }),
+          });
+          notify(`Published to YouTube: ${uploaded.youtubeUrl}`, 'success');
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : 'Direct YouTube upload failed.';
+          await safeFetchJson(`/api/videos/${video.id}/direct-result`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ errorMessage: errMsg }),
+          });
+          throw err;
+        }
+      } else {
+        const updated = await safeFetchJson<VideoRecord>(
+          `/api/videos/${video.id}/publish`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders(),
+            },
+            body: JSON.stringify({ useScheduledPublishAt: useSchedule }),
+          }
+        );
+        notify(`Published to YouTube: ${updated.youtubeUrl}`, 'success');
       }
+      await loadSnapshot();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'YouTube upload failed.', 'error');
+      await loadSnapshot().catch(() => {});
+    } finally {
+      setBusyVideoId(null);
+    }
+  };
 
-      const res = await fetch(`/api/clips/${encodeURIComponent(id)}/run`, {
+  const handleResearchAudio = async (focusTopic?: string) => {
+    setBusyAction('research-audio');
+    try {
+      await safeFetchJson('/api/audio/research', {
         method: 'POST',
-        headers,
-        body: JSON.stringify({ youtubeShortUrl: youtubeUrl, privacyStatus }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ focusTopic }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Automation failed');
-      setState(data.state);
-      const link = data.clip?.youtubeShortUrl;
-      if (link && navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(link).catch(() => {});
-      }
-      if (token) {
-        loadYoutubeData(token).catch(() => {});
-      }
-      notify(`Uploaded & submitted ${link || 'Short'} to Content Rewards (link copied).`);
+      await loadSnapshot();
+      notify('Updated trending meme audio list from live search.', 'success');
     } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Automation run failed');
+      notify(err instanceof Error ? err.message : 'Audio research failed.', 'error');
     } finally {
-      setBusyClipId(null);
+      setBusyAction(null);
     }
   };
 
-  // Show explicit confirmation dialog before uploading directly to user's YouTube channel
-  const requestRunClip = async (id: string, youtubeUrl?: string): Promise<void> => {
-    const clip = state?.clips.find((c) => c.id === id);
-    const token = getYoutubeAccessToken();
-    if (clip && token && !youtubeUrl && clip.hasVideoFile) {
-      setPendingUploadConfirm({
-        clip,
-        youtubeUrl,
-        privacyStatus: state?.config.defaultPrivacyStatus || 'public',
-      });
-      return;
-    }
-    await executeRunClip(id, youtubeUrl);
-  };
-
-  const handleSaveConfig = async (patch: Partial<AutomationConfig>) => {
-    setSavingConfig(true);
-    setErrorBanner(null);
+  const handleSaveSettings = async (patch: Partial<SchedulerSettings>) => {
+    setBusyAction('save-settings');
     try {
-      const res = await fetch('/api/config', {
+      await safeFetchJson('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save config');
-      setState(data.state);
-      notify('Saved US / CA / AU 5-upload schedule rules.');
+      await loadSnapshot();
+      notify('Settings saved.', 'success');
     } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to save rules');
+      notify(err instanceof Error ? err.message : 'Failed to save settings.', 'error');
     } finally {
-      setSavingConfig(false);
+      setBusyAction(null);
     }
   };
 
-  const handleRunTickNow = async () => {
-    setTicking(true);
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/pipeline/tick', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Tick failed');
-      setState(data.state);
-      const count = Array.isArray(data.processedIds) ? data.processedIds.length : 0;
-      notify(count > 0 ? `Processed ${count} due clip(s).` : 'No scheduled slots due right now.');
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Tick failed');
-    } finally {
-      setTicking(false);
-    }
-  };
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-slate-300 flex items-center justify-center text-xs font-mono">
+        Loading ShortsPilot – Xavier Memes...
+      </div>
+    );
+  }
 
-  const handleCreateCampaign = async (payload: Partial<Campaign>) => {
-    setErrorBanner(null);
-    try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add campaign');
-      setState(data.state);
-      notify(`Added campaign "${data.campaign.name}".`);
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to add campaign');
-    }
-  };
-
-  const handleUpdateCampaign = async (id: string, patch: Partial<Campaign>) => {
-    try {
-      const res = await fetch(`/api/campaigns/${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Update failed');
-      setState(data.state);
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to update campaign');
-    }
-  };
-
-  const handleDeleteCampaign = async (id: string) => {
-    try {
-      const res = await fetch(`/api/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Delete failed');
-      setState(data.state);
-      notify('Removed campaign.');
-    } catch (err) {
-      setErrorBanner(err instanceof Error ? err.message : 'Failed to delete campaign');
-    }
-  };
-
-  const currentNav = NAV_ITEMS.find((n) => n.id === activeTab) ?? NAV_ITEMS[0];
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
-      {/* Desktop Left Sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between bg-white border-r border-slate-200">
-        <div>
-          <div className="h-16 px-6 flex items-center border-b border-slate-200">
-            <span className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0">
-              Relay Studio
-            </span>
+  if (authRequired && !authenticated) {
+    return (
+      <div className="min-h-screen bg-[#090d16] flex items-center justify-center p-4">
+        <form
+          onSubmit={handleDashboardLogin}
+          className="w-full max-w-sm bg-[#0f172a] border border-slate-800 rounded-xl p-6 space-y-4"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-violet-400" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold text-slate-100">
+                ShortsPilot – Xavier Memes
+              </h1>
+              <p className="text-xs text-slate-400">Dashboard password required</p>
+            </div>
           </div>
 
-          <nav className="p-3 flex flex-col gap-1">
+          <input
+            type="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            placeholder="Enter dashboard password"
+            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none focus:border-violet-500"
+            autoFocus
+          />
+          {loginError && <p className="text-xs text-rose-400">{loginError}</p>}
+
+          <button
+            type="submit"
+            className="w-full py-2 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-500 text-white cursor-pointer"
+          >
+            Unlock Automation Dashboard
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  const activeNav = NAV_ITEMS.find((n) => n.id === activeTab)!;
+
+  return (
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 shrink-0 bg-[#0c1220] border-r border-slate-800 flex-col justify-between">
+        <div>
+          <div className="px-5 py-5 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">
+                XP
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-100 truncate">ShortsPilot</div>
+                <div className="text-[11px] text-cyan-400 font-mono truncate">
+                  Xavier Memes
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <nav className="p-3 space-y-1">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
-              const active = activeTab === item.id;
+              const isActive = item.id === activeTab;
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors text-left whitespace-nowrap cursor-pointer ${
-                    active
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-violet-400' : ''}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -435,62 +529,42 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-200 flex items-center gap-3">
-          {ytConnected && ytChannel?.thumbnailUrl ? (
-            <img
-              src={ytChannel.thumbnailUrl}
-              alt={ytChannel.title}
-              referrerPolicy="no-referrer"
-              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-            />
-          ) : !avatarFailed ? (
-            <img
-              src={STUDIO_ASSETS.avatar}
-              alt="Creator profile"
-              referrerPolicy="no-referrer"
-              onError={() => setAvatarFailed(true)}
-              className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
-            />
-          ) : (
-            <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center shrink-0">
-              RS
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-slate-900 truncate">
-              {ytConnected && ytChannel ? ytChannel.title : 'YouTube Not Connected'}
-            </p>
-            <p className="text-[11px] text-slate-500 truncate">
-              5/day · US · CA · AU
-            </p>
+        <div className="p-4 border-t border-slate-800 space-y-2 text-[11px]">
+          <div className="text-slate-500 uppercase tracking-wider font-medium">
+            Fixed Metadata
+          </div>
+          <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-slate-300 leading-relaxed break-words">
+            {snapshot?.fixedMetadata.title ||
+              'Xavier memes funny #memes #xavier #xaviermemes'}
           </div>
         </div>
       </aside>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
-            className="fixed inset-0 bg-slate-900/40"
+            className="fixed inset-0 bg-black/70"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <aside className="relative w-64 max-w-[80vw] bg-white h-full border-r border-slate-200 flex flex-col justify-between z-10">
+          <aside className="relative w-64 bg-[#0c1220] border-r border-slate-800 p-4 flex flex-col justify-between z-10">
             <div>
-              <div className="h-16 px-5 flex items-center justify-between border-b border-slate-200">
-                <span className="text-base font-bold text-slate-900">Relay Studio</span>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <span className="text-sm font-bold text-slate-100">
+                  ShortsPilot · Xavier Memes
+                </span>
                 <button
                   type="button"
-                  aria-label="Close navigation"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1.5 text-slate-500 hover:text-slate-900"
+                  className="p-1 text-slate-400"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <nav className="p-3 flex flex-col gap-1">
+              <nav className="mt-3 space-y-1">
                 {NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
-                  const active = activeTab === item.id;
+                  const isActive = item.id === activeTab;
                   return (
                     <button
                       key={item.id}
@@ -499,11 +573,13 @@ export default function App() {
                         setActiveTab(item.id);
                         setMobileMenuOpen(false);
                       }}
-                      className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-left whitespace-nowrap ${
-                        active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer ${
+                        isActive
+                          ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
+                          : 'text-slate-400 hover:text-slate-100'
                       }`}
                     >
-                      <Icon className="w-4 h-4 shrink-0" />
+                      <Icon className="w-4 h-4" />
                       <span>{item.label}</span>
                     </button>
                   );
@@ -514,124 +590,171 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between gap-8 shrink-0">
+        {/* Top Bar */}
+        <header className="h-14 border-b border-slate-800 bg-[#0c1220]/80 px-4 lg:px-6 flex items-center justify-between gap-4 sticky top-0 z-20 backdrop-blur-sm">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
-              aria-label="Open menu"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 text-slate-600 hover:text-slate-900 rounded-md"
+              className="lg:hidden p-1.5 rounded-lg border border-slate-800 text-slate-300"
+              aria-label="Open menu"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2 text-sm truncate">
-              <span className="text-slate-400 hidden sm:inline">Relay Studio</span>
-              <span className="text-slate-300 hidden sm:inline">/</span>
-              <h1 className="font-semibold text-slate-900 truncate">
-                {currentNav.breadcrumb}
-              </h1>
+            <div className="text-xs text-slate-400 truncate">
+              <span className="hidden sm:inline">ShortsPilot / Xavier Memes / </span>
+              <span className="text-slate-100 font-semibold">{activeNav.label}</span>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('folder')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            Drop Clips
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {!snapshot?.channel.connected ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('channel')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 cursor-pointer whitespace-nowrap"
+              >
+                <Youtube className="w-3.5 h-3.5 text-rose-400" />
+                Connect YouTube
+              </button>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                {snapshot.channel.channelTitle}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('upload')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-500 text-white cursor-pointer whitespace-nowrap"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              Upload Shorts
+            </button>
+          </div>
         </header>
 
-        <main className="flex-1 p-6 max-w-[1320px] w-full mx-auto flex flex-col gap-5">
-          {errorBanner && (
-            <div className="px-4 py-3 text-xs font-medium bg-rose-50 border border-rose-200 text-rose-800 rounded-lg flex items-center justify-between gap-4">
-              <span>{errorBanner}</span>
-              <button
-                type="button"
-                onClick={() => setErrorBanner(null)}
-                className="text-rose-700 hover:text-rose-900 underline shrink-0 cursor-pointer"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
+        {/* Status Toast Banner */}
+        {banner && (
+          <div
+            className={`mx-4 lg:mx-6 mt-4 px-4 py-2.5 rounded-lg border flex items-center justify-between gap-3 text-xs ${
+              banner.level === 'error'
+                ? 'bg-rose-500/10 border-rose-500/40 text-rose-200'
+                : banner.level === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                : 'bg-cyan-500/10 border-cyan-500/40 text-cyan-200'
+            }`}
+          >
+            <span>{banner.message}</span>
+            <button
+              type="button"
+              onClick={() => setBanner(null)}
+              className="text-current opacity-70 hover:opacity-100 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
-          {noticeBanner && (
-            <div className="px-4 py-3 text-xs font-medium bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg flex items-center justify-between gap-4">
-              <span>{noticeBanner}</span>
-              <button
-                type="button"
-                onClick={() => setNoticeBanner(null)}
-                className="text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-
-          {loading || !state ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[0, 1, 2, 3].map((k) => (
-                <div
-                  key={k}
-                  className="h-28 bg-white border border-slate-200 rounded-lg animate-pulse p-5"
-                />
-              ))}
+        {/* Active View Viewport */}
+        <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full mx-auto">
+          {!snapshot ? (
+            <div className="space-y-4">
+              <div className="h-28 rounded-xl bg-slate-900 border border-slate-800 animate-pulse" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className="h-24 rounded-xl bg-slate-900 border border-slate-800 animate-pulse"
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <>
-              {activeTab === 'dashboard' && (
-                <DailyDashboardView
-                  state={state}
-                  ytConnected={ytConnected}
-                  ytConnecting={ytConnecting}
-                  ytChannel={ytChannel}
-                  ytVideos={ytVideos}
-                  ytLoadingVideos={ytLoadingVideos}
-                  onConnectYoutube={handleConnectYoutube}
-                  onDisconnectYoutube={handleDisconnectYoutube}
-                  onRefreshYoutube={handleRefreshYoutube}
-                  onRequestUploadClip={(clip) => requestRunClip(clip.id)}
-                  onGoToFolder={() => setActiveTab('folder')}
-                  busyClipId={busyClipId}
+              {activeTab === 'overview' && (
+                <OverviewView
+                  snapshot={snapshot}
+                  onNavigate={(tab) => setActiveTab(tab as NavId)}
+                  onToggleScheduler={handleToggleScheduler}
+                  onSyncStats={handleSyncStats}
+                  busyAction={busyAction}
                 />
               )}
-
-              {activeTab === 'folder' && (
-                <FolderPipelineView
-                  state={state}
-                  onUploadClips={handleUploadClips}
-                  onScanFolder={handleScanFolder}
-                  onUpdateClip={handleUpdateClip}
-                  onDeleteClip={handleDeleteClip}
-                  onRunClip={requestRunClip}
-                  uploading={uploading}
-                  scanning={scanning}
-                  busyClipId={busyClipId}
+              {activeTab === 'upload' && (
+                <UploadShortsView
+                  snapshot={snapshot}
+                  onUploadComplete={loadSnapshot}
+                  onNotify={notify}
+                  onNavigate={(tab) => setActiveTab(tab as NavId)}
                 />
               )}
-
-              {activeTab === 'schedule' && (
-                <Tier1ScheduleView
-                  state={state}
-                  onSaveConfig={handleSaveConfig}
-                  onRunTickNow={handleRunTickNow}
-                  saving={savingConfig}
-                  ticking={ticking}
+              {activeTab === 'library' && (
+                <VideoLibraryView
+                  snapshot={snapshot}
+                  onAnalyzeVideo={handleAnalyzeVideo}
+                  onDeleteVideo={handleDeleteVideo}
+                  onRequestPublish={(v) => {
+                    setConfirmUseSchedule(true);
+                    setConfirmPublishVideo(v);
+                  }}
+                  onNavigate={(tab) => setActiveTab(tab as NavId)}
+                  busyVideoId={busyVideoId}
                 />
               )}
-
-              {activeTab === 'rewards' && (
-                <RewardsSubmitView
-                  state={state}
-                  onCreateCampaign={handleCreateCampaign}
-                  onUpdateCampaign={handleUpdateCampaign}
-                  onDeleteCampaign={handleDeleteCampaign}
-                  onRunClip={requestRunClip}
-                  busyClipId={busyClipId}
+              {activeTab === 'queue' && (
+                <PublishingQueueView
+                  snapshot={snapshot}
+                  onToggleScheduler={handleToggleScheduler}
+                  onReschedule={handleReschedule}
+                  onRetry={handleRetryVideo}
+                  onDelete={handleDeleteVideo}
+                  onRequestPublish={(v) => {
+                    setConfirmUseSchedule(true);
+                    setConfirmPublishVideo(v);
+                  }}
+                  onRunTick={handleRunTick}
+                  busyVideoId={busyVideoId}
+                />
+              )}
+              {activeTab === 'calendar' && (
+                <CalendarView
+                  snapshot={snapshot}
+                  onNavigate={(tab) => setActiveTab(tab as NavId)}
+                />
+              )}
+              {activeTab === 'audio' && (
+                <TrendingAudioView
+                  snapshot={snapshot}
+                  onResearchAudio={handleResearchAudio}
+                  busyAction={busyAction}
+                />
+              )}
+              {activeTab === 'analytics' && (
+                <AnalyticsView
+                  snapshot={snapshot}
+                  report={analyticsReport}
+                  onRefreshAnalytics={handleLoadAnalytics}
+                  onSyncStats={handleSyncStats}
+                  busyAction={busyAction}
+                />
+              )}
+              {activeTab === 'channel' && (
+                <YouTubeChannelView
+                  snapshot={snapshot}
+                  onConnectGoogle={handleConnectYouTube}
+                  onDisconnect={handleDisconnectYouTube}
+                  onSyncStats={handleSyncStats}
+                  busyAction={busyAction}
+                />
+              )}
+              {activeTab === 'settings' && (
+                <SettingsView
+                  snapshot={snapshot}
+                  onSaveSettings={handleSaveSettings}
+                  busyAction={busyAction}
                 />
               )}
             </>
@@ -639,83 +762,84 @@ export default function App() {
         </main>
       </div>
 
-      {/* Explicit Confirmation Modal for Live YouTube Channel Upload */}
-      {pendingUploadConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-lg max-w-md w-full p-6 flex flex-col gap-4 shadow-lg">
-            <div>
-              <h3 className="text-base font-semibold text-slate-900">
-                Confirm Upload to YouTube
-              </h3>
-              <p className="text-xs text-slate-600 mt-1">
-                This will upload the video file to your connected YouTube channel (
-                <span className="font-medium text-slate-900">
-                  {ytChannel?.title || 'Connected Channel'}
-                </span>
-                ) and automatically submit the live Short URL to Content Rewards.
-              </p>
-            </div>
-
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-md text-xs flex flex-col gap-1.5">
+      {/* Explicit YouTube Upload Confirmation Modal */}
+      {confirmPublishVideo && snapshot && (
+        <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+          <div className="bg-[#0f172a] border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="text-slate-500">Short Title: </span>
-                <span className="font-medium text-slate-900">
-                  {pendingUploadConfirm.clip.shortTitle}
-                </span>
+                <h3 className="text-base font-semibold text-slate-100">
+                  Confirm YouTube API Upload
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  This will upload the Short via official YouTube Data API v3 (`videos.insert`).
+                </p>
               </div>
-              <div>
-                <span className="text-slate-500">Hashtags: </span>
-                <span className="font-mono text-slate-700">
-                  {pendingUploadConfirm.clip.hashtags.join(' ')}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500">Audience: </span>
-                <span className="font-mono text-slate-700">
-                  {pendingUploadConfirm.clip.targetRegions.join(' · ')}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-slate-700">
-                YouTube Visibility
-              </label>
-              <select
-                value={pendingUploadConfirm.privacyStatus}
-                onChange={(e) =>
-                  setPendingUploadConfirm((prev) =>
-                    prev
-                      ? { ...prev, privacyStatus: e.target.value as YoutubePrivacy }
-                      : null
-                  )
-                }
-                className="px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg text-slate-900"
-              >
-                <option value="public">Public</option>
-                <option value="unlisted">Unlisted</option>
-                <option value="private">Private</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => setPendingUploadConfirm(null)}
-                className="px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                onClick={() => setConfirmPublishVideo(null)}
+                className="text-slate-400 hover:text-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-3.5 space-y-2 text-xs">
+              <div>
+                <span className="text-slate-400">Video File: </span>
+                <span className="text-slate-100 font-medium">
+                  {confirmPublishVideo.originalFileName}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400">Locked Title &amp; Hashtags: </span>
+                <span className="text-cyan-400 font-mono">
+                  {snapshot.fixedMetadata.title}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400">Target Channel: </span>
+                <span className="text-slate-100">
+                  {snapshot.channel.channelTitle || 'Connected Google YouTube Channel'}
+                </span>
+              </div>
+            </div>
+
+            {confirmPublishVideo.scheduledAt &&
+              new Date(confirmPublishVideo.scheduledAt).getTime() > Date.now() + 60_000 && (
+                <label className="flex items-start gap-2.5 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmUseSchedule}
+                    onChange={(e) => setConfirmUseSchedule(e.target.checked)}
+                    className="mt-0.5 accent-violet-500"
+                  />
+                  <span>
+                    Upload as <strong>Private</strong> and schedule automatic YouTube publication at{' '}
+                    <span className="font-mono text-cyan-400">
+                      {new Date(confirmPublishVideo.scheduledAt).toLocaleString('en-US', {
+                        timeZone: snapshot.settings.timezone,
+                      })}
+                    </span>
+                  </span>
+                </label>
+              )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmPublishVideo(null)}
+                className="px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const { clip, youtubeUrl, privacyStatus } = pendingUploadConfirm;
-                  setPendingUploadConfirm(null);
-                  executeRunClip(clip.id, youtubeUrl, privacyStatus);
-                }}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                onClick={executeConfirmedPublish}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-500 text-white cursor-pointer"
               >
-                Upload &amp; Submit
+                <Send className="w-3.5 h-3.5" />
+                Confirm &amp; Upload
               </button>
             </div>
           </div>
