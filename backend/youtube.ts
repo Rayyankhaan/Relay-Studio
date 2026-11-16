@@ -3,17 +3,17 @@ import {
   FIXED_SHORT_DESCRIPTION,
   FIXED_SHORT_HASHTAGS,
   FIXED_SHORT_TITLE,
-} from '../config/constants.ts';
+} from '../config/constants.js';
 import {
   clearStoredRefreshToken,
   getStoredRefreshToken,
   saveEncryptedRefreshToken,
-} from '../database/db.ts';
+} from '../database/db.js';
 import type {
   AnalyticsReport,
   VideoRecord,
   YouTubeChannelStatus,
-} from '../src/types.ts';
+} from '../src/types.js';
 
 const YOUTUBE_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',

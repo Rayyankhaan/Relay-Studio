@@ -6,7 +6,7 @@ import {
   FIXED_SHORT_HASHTAGS,
   FIXED_SHORT_TITLE,
   MAX_VIDEO_FILE_BYTES,
-} from '../config/constants.ts';
+} from '../config/constants.js';
 import {
   appendActivityLog,
   findVideoBySha256,
@@ -15,8 +15,8 @@ import {
   listVideos,
   removeVideoRecord,
   upsertVideo,
-} from '../database/db.ts';
-import type { VideoRecord } from '../src/types.ts';
+} from '../database/db.js';
+import type { VideoRecord } from '../src/types.js';
 import {
   computeFileSha256,
   ensureShortsFolders,
@@ -27,9 +27,9 @@ import {
   moveVideoBetweenStages,
   safeFilePathInStage,
   writeOperationalLogLine,
-} from './folders.ts';
-import { validateVideoAndGenerateThumbnail } from './validator.ts';
-import { resolveEffectiveAccessToken, uploadVideoFileToYouTube } from './youtube.ts';
+} from './folders.js';
+import { validateVideoAndGenerateThumbnail } from './validator.js';
+import { resolveEffectiveAccessToken, uploadVideoFileToYouTube } from './youtube.js';
 
 const activeUploads = new Set<string>();
 let tickRunning = false;

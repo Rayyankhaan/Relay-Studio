@@ -3,10 +3,10 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createServer as createViteServer } from 'vite';
-import { createShortsPilotApp } from './backend/app.ts';
-import { ensureShortsFolders, getShortsStageDir } from './backend/folders.ts';
-import { runSchedulerTick, scanIncomingFolder } from './backend/scheduler.ts';
-import { getSettings } from './database/db.ts';
+import { createShortsPilotApp } from './backend/app.js';
+import { ensureShortsFolders, getShortsStageDir } from './backend/folders.js';
+import { runSchedulerTick, scanIncomingFolder } from './backend/scheduler.js';
+import { getSettings } from './database/db.js';
 
 async function startServer() {
   await ensureShortsFolders();

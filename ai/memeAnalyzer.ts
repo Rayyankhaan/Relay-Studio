@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { MemeAnalysisResult, VideoRecord } from '../src/types.ts';
-import { getThumbnailsDir, locateVideoFile } from '../backend/folders.ts';
+import type { MemeAnalysisResult, VideoRecord } from '../src/types.js';
+import { getThumbnailsDir, locateVideoFile } from '../backend/folders.js';
 
 function getGeminiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;

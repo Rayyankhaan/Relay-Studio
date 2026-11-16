@@ -7,13 +7,13 @@ import type { DatabaseSync } from 'node:sqlite';
 import {
   DEFAULT_POSTING_SLOTS_EST,
   TARGET_AUDIENCE_COUNTRIES,
-} from '../config/constants.ts';
+} from '../config/constants.js';
 import type {
   ActivityLogEntry,
   SchedulerSettings,
   TrendingAudioItem,
   VideoRecord,
-} from '../src/types.ts';
+} from '../src/types.js';
 
 const require = createRequire(import.meta.url);
 const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
@@ -78,7 +78,8 @@ let fallbackStorePath: string | null = null;
 function initSqlite(): DatabaseSync | null {
   if (dbInstance) return dbInstance;
   try {
-    const sqlite = require('node:sqlite') as { DatabaseSync: typeof DatabaseSync };
+    const sqliteModuleId = ['node', 'sqlite'].join(':');
+    const sqlite = require(sqliteModuleId) as { DatabaseSync: typeof DatabaseSync };
     const dbDir = getDbBaseDir();
     fs.mkdirSync(dbDir, { recursive: true });
     const dbFile = path.join(dbDir, 'shortspilot.db');

@@ -4,13 +4,13 @@ import fs from 'node:fs';
 import multer from 'multer';
 import os from 'node:os';
 import path from 'node:path';
-import { analyzeMemeVideo, isGeminiConfigured } from '../ai/memeAnalyzer.ts';
+import { analyzeMemeVideo, isGeminiConfigured } from '../ai/memeAnalyzer.js';
 import {
   FIXED_SHORT_DESCRIPTION,
   FIXED_SHORT_HASHTAGS,
   FIXED_SHORT_TITLE,
   MAX_VIDEO_FILE_BYTES,
-} from '../config/constants.ts';
+} from '../config/constants.js';
 import {
   appendActivityLog,
   getSettings,
@@ -21,16 +21,16 @@ import {
   saveSettings,
   saveTrendingAudioItems,
   upsertVideo,
-} from '../database/db.ts';
-import type { DashboardSnapshot, SchedulerSettings } from '../src/types.ts';
-import { researchTrendingMemeAudio } from './audioResearch.ts';
+} from '../database/db.js';
+import type { DashboardSnapshot, SchedulerSettings } from '../src/types.js';
+import { researchTrendingMemeAudio } from './audioResearch.js';
 import {
   ensureShortsFolders,
   getShortsStageDir,
   getThumbnailsDir,
   isAllowedVideoExtension,
   locateVideoFile,
-} from './folders.ts';
+} from './folders.js';
 import {
   deleteQueuedVideo,
   ingestVideoFromPath,
@@ -40,8 +40,8 @@ import {
   retryFailedVideo,
   runSchedulerTick,
   scanIncomingFolder,
-} from './scheduler.ts';
-import { checkFfmpegAvailable } from './validator.ts';
+} from './scheduler.js';
+import { checkFfmpegAvailable } from './validator.js';
 import {
   buildServerOAuthUrl,
   disconnectServerYouTubeToken,
@@ -52,7 +52,7 @@ import {
   isServerOAuthConfigured,
   resolveEffectiveAccessToken,
   syncPublishedVideosStats,
-} from './youtube.ts';
+} from './youtube.js';
 
 const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 const SESSION_COOKIE_NAME = 'shortspilot_session';

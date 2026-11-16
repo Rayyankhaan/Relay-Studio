@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import type { TrendingAudioItem } from '../src/types.ts';
+import type { TrendingAudioItem } from '../src/types.js';
 
 function getGeminiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;

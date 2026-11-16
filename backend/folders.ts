@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { ALLOWED_VIDEO_EXTENSIONS } from '../config/constants.ts';
-import type { VideoLifecycleStatus } from '../src/types.ts';
+import { ALLOWED_VIDEO_EXTENSIONS } from '../config/constants.js';
+import type { VideoLifecycleStatus } from '../src/types.js';
 
 const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 

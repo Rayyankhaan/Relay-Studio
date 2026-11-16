@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { VideoValidationMetadata } from '../src/types.ts';
-import { getThumbnailsDir } from './folders.ts';
+import type { VideoValidationMetadata } from '../src/types.js';
+import { getThumbnailsDir } from './folders.js';
 
 const execFileAsync = promisify(execFile);
 

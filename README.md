@@ -58,4 +58,4 @@ AI meme analysis and trending audio research never alter or override the title, 
   npm run build
   NODE_ENV=production npm start
   ```
-- **Vercel Serverless:** `api/[...route].ts` and `vercel.json` route `/api/*` requests to the Express API. Videos larger than Vercel's serverless payload limit are cached in browser IndexedDB and uploaded directly to YouTube via official resumable upload (`videos.insert`).
+- **Vercel Serverless:** `api/index.ts` and `vercel.json` route `/api/*` requests to the Express API. Videos larger than Vercel's serverless payload limit are cached in browser IndexedDB and uploaded directly to YouTube via official resumable upload (`videos.insert`).
